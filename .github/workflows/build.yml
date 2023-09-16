@@ -44,5 +44,5 @@ jobs:
         shell: powershell
         run: |
           .\.sonar\scanner\dotnet-sonarscanner begin /k:"jonasemanuel20_dotnet-users-api" /o:"jonasemanuel20" /d:sonar.token="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="https://sonarcloud.io"
-          dotnet publish "UsersAPI.csproj" -c Release -o /app/publish /p:UseAppHost=false
+          dotnet publish "UsersAPI\UsersAPI.csproj" -c Release -o /app/publish /p:UseAppHost=false
           .\.sonar\scanner\dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
