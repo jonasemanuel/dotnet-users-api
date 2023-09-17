@@ -1,7 +1,26 @@
+using HealthChecks.UI.Client;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+builder.Services.AddHealthChecks().AddNpgSql(
+         connectionString: builder.Configuration.GetConnectionString("Postgres"),
+         healthQuery: "SELECT 1",
+         name: "Database",
+         failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy
+    )
+    .AddUrlGroup(new Uri("http://httpbin.org/status/200"), "API Genérica com status code 200");
+
+builder.Services.AddHealthChecksUI(s =>
+{
+    s.AddHealthCheckEndpoint("Infnet API", "http://host.docker.internal:49155/healthz");
+})
+.AddInMemoryStorage();
+builder.Services.AddApplicationInsightsTelemetry(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]);
 
 var app = builder.Build();
 
@@ -11,27 +30,19 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+app.MapControllers();
 
-app.MapGet("/weatherforecast", () =>
-{
-    return Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateTime.Now.AddDays(index),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-})
-.WithName("GetWeatherForecast");
+app.UseRouting()
+   .UseEndpoints(config =>
+   {
+       config.MapHealthChecks("/healthz", new HealthCheckOptions
+       {
+           Predicate = _ => true,
+           ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+       });
+
+       config.MapHealthChecksUI();
+   });
+
 
 app.Run();
-
-internal record WeatherForecast(DateTime Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
